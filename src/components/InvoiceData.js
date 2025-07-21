@@ -3,9 +3,8 @@ import { Building2, AlertCircle, ChevronRight } from 'lucide-react';
 import { Button } from './ui/button';
 import { InvoiceDataModal } from './InvoiceDataModal';
 
-export function InvoiceData({ hasData = false }) {
+export function InvoiceData({ hasData = false, onConfigureClick }) {
   const [showModal, setShowModal] = useState(false);
-  const [enableInvoices, setEnableInvoices] = useState(true);
   const [savedData, setSavedData] = useState(null);
   
   // Datos mock cuando hay información
@@ -31,7 +30,6 @@ export function InvoiceData({ hasData = false }) {
   
   const handleSaveData = (data) => {
     setSavedData(data);
-    setEnableInvoices(data.enableAutoInvoicing);
   };
   
   const getRegimeLabel = (regimeCode) => {
@@ -62,7 +60,10 @@ export function InvoiceData({ hasData = false }) {
               </p>
               <Button 
                 className="bg-blue-600 hover:bg-blue-700"
-                onClick={() => setShowModal(true)}
+                onClick={() => {
+                  setShowModal(true);
+                  if (onConfigureClick) onConfigureClick();
+                }}
               >
                 Configurar ahora
                 <ChevronRight className="w-4 h-4 ml-2" />
@@ -125,20 +126,6 @@ export function InvoiceData({ hasData = false }) {
             Col. {invoiceData.colony}, C.P. {invoiceData.postalCode},
             {invoiceData.city}, {invoiceData.state}
           </p>
-        </div>
-        
-        <div className="pt-4 border-t border-gray-100">
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={enableInvoices}
-              onChange={(e) => setEnableInvoices(e.target.checked)}
-              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-            />
-            <span className="text-sm text-gray-700">
-              {enableInvoices ? 'Facturas automáticas activadas' : 'Facturas automáticas desactivadas'}
-            </span>
-          </label>
         </div>
       </div>
       

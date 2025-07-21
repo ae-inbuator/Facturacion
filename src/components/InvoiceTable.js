@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Search, MoreHorizontal, ChevronLeft, ChevronRight, Download, Calendar, FileText } from 'lucide-react';
+import { ChevronDown, Search, MoreHorizontal, ChevronLeft, ChevronRight, Download, Calendar, FileText, Clock, CreditCard } from 'lucide-react';
 import { Button } from './ui/button';
 import { Checkbox } from './ui/checkbox';
 import { Input } from './ui/input';
@@ -24,9 +24,11 @@ const periodOptions = [
 // Opciones de estado
 const statusOptions = [
   { label: "Todos", value: "all" },
+  { label: "En curso", value: "in_progress" },
   { label: "Pagada", value: "paid" },
   { label: "Pendiente", value: "pending" },
-  { label: "Vencida", value: "overdue" }
+  { label: "Vencida", value: "overdue" },
+  { label: "Nota de crédito", value: "credit_note" }
 ];
 
 // Opciones de servicio
@@ -48,6 +50,26 @@ const chargeTypeOptions = [
 ];
 
 const invoices = [
+  {
+    id: '0',
+    date: 'Jul 15 - Ago 14, 2025',
+    invoiceNumber: 'PENDIENTE',
+    service: 'Varios',
+    concept: 'Acumulado del período actual',
+    documentType: 'Factura',
+    chargeType: 'mixed',
+    amount: 3247.50,
+    status: 'in_progress',
+    hasMultipleItems: true,
+    conceptDetails: [
+      { description: 'Cargos acumulados:', amount: null, isHeader: true },
+      { description: 'Comisiones por ventas', amount: 1234.50 },
+      { description: 'Comisiones T1pagos', amount: 213.00 },
+      { description: 'Suscripciones del período:', amount: null, isHeader: true },
+      { description: 'T1tienda - Plan Intermedio', amount: 800.00 },
+      { description: 'T1envíos - Plan Básico', amount: 1000.00 }
+    ]
+  },
   {
     id: '1',
     date: 'Jul 14, 2025',
@@ -93,21 +115,29 @@ const invoices = [
   },
   {
     id: '4',
-    date: 'Jul 14, 2025',
+    date: 'Jul 01, 2025',
     invoiceNumber: 'B12345656',
-    service: 'Varios',
-    concept: 'Cargos del período 15 jun - 14 jul',
+    service: 'T1pagos',
+    concept: 'Nota de crédito - Cambio de plan',
+    documentType: 'Nota de crédito',
+    chargeType: 'credit_note',
+    amount: -10250.00,
+    status: 'credit_note',
+    hasMultipleItems: false,
+    conceptDetails: []
+  },
+  {
+    id: '4.1',
+    date: 'Jul 15, 2025',
+    invoiceNumber: 'B12345657',
+    service: 'T1tienda',
+    concept: 'Factura con nota de crédito aplicada',
     documentType: 'Factura',
-    chargeType: 'additional',
-    amount: 10250.00,
+    chargeType: 'subscription',
+    amount: 800.00,
     status: 'paid',
-    hasMultipleItems: true,
-    conceptDetails: [
-      { description: 'Comisiones por ventas', amount: 8234.50 },
-      { description: 'Comisiones T1pagos', amount: 1892.50 },
-      { description: 'WhatsApp extra (150)', amount: 45.00 },
-      { description: 'SMS extra (300)', amount: 78.00 }
-    ]
+    hasMultipleItems: false,
+    conceptDetails: []
   },
   {
     id: '5',
@@ -186,7 +216,7 @@ const invoices = [
     documentType: 'Nota de crédito',
     chargeType: 'credit_note',
     amount: -1750.00,
-    status: 'paid',
+    status: 'credit_note',
     hasMultipleItems: true,
     conceptDetails: [
       { description: 'Devolución orden #123', amount: -500.00 },
@@ -216,6 +246,11 @@ const invoices = [
 ];
 
 const statusConfig = {
+  in_progress: {
+    label: 'En curso',
+    bgColor: 'bg-blue-50',
+    textColor: 'text-blue-600'
+  },
   paid: {
     label: 'Pagada',
     bgColor: 'bg-green-50',
@@ -230,6 +265,11 @@ const statusConfig = {
     label: 'Vencida',
     bgColor: 'bg-red-50',
     textColor: 'text-red-600'
+  },
+  credit_note: {
+    label: 'Nota de crédito',
+    bgColor: 'bg-purple-50',
+    textColor: 'text-purple-600'
   }
 };
 
@@ -409,7 +449,7 @@ const CustomDropdown = ({ label, value, options, onChange, className = '' }) => 
 };
 
 // Menú de acciones individuales
-const ActionMenu = ({ invoice }) => {
+const ActionMenu = ({ invoice, hasFiscalData, onInvoiceClick }) => {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -437,22 +477,58 @@ const ActionMenu = ({ invoice }) => {
       
       {isOpen && (
         <div className="absolute right-0 z-50 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg">
+          {/* Botón Actualizar método de pago para facturas pendientes/vencidas */}
+          {(invoice.status === 'pending' || invoice.status === 'overdue') && (
+            <>
+              <button
+                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors rounded-t-lg font-medium text-blue-600 hover:text-blue-700 flex items-center gap-2"
+                onClick={() => {
+                  console.log('Actualizar método de pago', invoice.invoiceNumber);
+                  setIsOpen(false);
+                  // Aquí puedes agregar la lógica para abrir el modal de cambio de método de pago
+                  if (window.openChangePaymentModal) {
+                    window.openChangePaymentModal();
+                  }
+                }}
+              >
+                <CreditCard size={14} />
+                Actualizar método de pago
+              </button>
+              <div className="h-px bg-gray-200" />
+            </>
+          )}
+          {invoice.status !== 'in_progress' && (
+            <>
+              <button
+                className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors ${(invoice.status === 'pending' || invoice.status === 'overdue') ? '' : 'rounded-t-lg'}`}
+                onClick={() => console.log('Descargar PDF', invoice.invoiceNumber)}
+              >
+                Descargar PDF
+              </button>
+              {hasFiscalData && (
+                <button
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors"
+                  onClick={() => console.log('Descargar XML', invoice.invoiceNumber)}
+                >
+                  Descargar XML
+                </button>
+              )}
+              <div className="h-px bg-gray-200" />
+            </>
+          )}
           <button
-            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors rounded-t-lg"
-            onClick={() => console.log('Descargar PDF', invoice.invoiceNumber)}
-          >
-            Descargar PDF
-          </button>
-          <button
-            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors"
-            onClick={() => console.log('Descargar XML', invoice.invoiceNumber)}
-          >
-            Descargar XML
-          </button>
-          <div className="h-px bg-gray-200" />
-          <button
-            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors rounded-b-lg"
-            onClick={() => console.log('Ver detalles', invoice.invoiceNumber)}
+            className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors ${invoice.status === 'in_progress' ? 'rounded-lg' : 'rounded-b-lg'}`}
+            onClick={() => {
+              console.log('Ver detalles', invoice.invoiceNumber);
+              // Cerrar el menú
+              setIsOpen(false);
+              // Si hay un callback de clic en factura, llamarlo
+              if (onInvoiceClick) {
+                // Para facturas en curso, usar un identificador especial
+                const invoiceId = invoice.status === 'in_progress' ? 'PENDIENTE' : invoice.invoiceNumber;
+                onInvoiceClick(invoiceId);
+              }
+            }}
           >
             Ver detalles
           </button>
@@ -462,7 +538,7 @@ const ActionMenu = ({ invoice }) => {
   );
 };
 
-export function InvoiceTable({ onInvoiceClick }) {
+export function InvoiceTable({ onInvoiceClick, hasFiscalData = true }) {
   const [selectedItems, setSelectedItems] = useState(new Set());
   const [selectAll, setSelectAll] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -514,7 +590,9 @@ export function InvoiceTable({ onInvoiceClick }) {
   const handleSelectAll = (checked) => {
     setSelectAll(checked);
     if (checked) {
-      setSelectedItems(new Set(filteredInvoices.map(invoice => invoice.id)));
+      // Solo seleccionar facturas que no estén en curso
+      const selectableInvoices = filteredInvoices.filter(invoice => invoice.status !== 'in_progress');
+      setSelectedItems(new Set(selectableInvoices.map(invoice => invoice.id)));
     } else {
       setSelectedItems(new Set());
     }
@@ -536,7 +614,7 @@ export function InvoiceTable({ onInvoiceClick }) {
       {/* Header */}
       <div className="mb-6">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-semibold text-gray-900">Facturas emitidas</h3>
+          <h3 className="text-xl font-semibold text-gray-900">{hasFiscalData ? 'Facturas emitidas' : 'Recibos emitidos'}</h3>
           <span className="text-sm text-gray-500">
             {totalItems.toLocaleString()} comprobantes disponibles
           </span>
@@ -601,14 +679,16 @@ export function InvoiceTable({ onInvoiceClick }) {
                 >
                   Descargar PDFs
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => console.log('Descargar XMLs', selectedItems)}
-                  className="text-sm"
-                >
-                  Descargar XMLs
-                </Button>
+                {hasFiscalData && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => console.log('Descargar XMLs', selectedItems)}
+                    className="text-sm"
+                  >
+                    Descargar XMLs
+                  </Button>
+                )}
               </>
             ) : (
               <Button variant="outline">
@@ -635,7 +715,7 @@ export function InvoiceTable({ onInvoiceClick }) {
                   Fecha de emisión
                 </th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                  Número de factura
+                  {hasFiscalData ? 'Número de factura' : 'Número de recibo'}
                 </th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider w-2/5">
                   Concepto de facturación
@@ -653,18 +733,23 @@ export function InvoiceTable({ onInvoiceClick }) {
               {filteredInvoices.map((invoice, index) => {
                 const statusInfo = statusConfig[invoice.status];
                 const isSelected = selectedItems.has(invoice.id);
-                const isClickable = index < 4; // Solo las primeras 4 son clickeables
+                const isClickable = invoice.invoiceNumber.startsWith('B') && invoice.status !== 'in_progress'; // Solo clickeable si tiene número de factura real
+                const isSelectable = invoice.status !== 'in_progress'; // No seleccionable si está en curso
                 
                 return (
                   <tr 
                     key={invoice.id} 
-                    className="border-b border-gray-100 hover:bg-gray-50"
+                    className={`border-b ${invoice.status === 'in_progress' ? 'bg-blue-50/30 border-blue-100' : 'border-gray-100'} hover:bg-gray-50`}
                   >
                     <td className="py-4 px-4" onClick={(e) => e.stopPropagation()}>
-                      <Checkbox 
-                        checked={isSelected}
-                        onCheckedChange={(checked) => handleSelectItem(invoice.id, checked)}
-                      />
+                      {isSelectable ? (
+                        <Checkbox 
+                          checked={isSelected}
+                          onCheckedChange={(checked) => handleSelectItem(invoice.id, checked)}
+                        />
+                      ) : (
+                        <div className="w-4 h-4" /> // Espacio vacío para mantener alineación
+                      )}
                     </td>
                     <td className="py-4 px-4 text-sm">{invoice.date}</td>
                     <td className="py-4 px-4 text-sm">
@@ -680,7 +765,9 @@ export function InvoiceTable({ onInvoiceClick }) {
                           {invoice.invoiceNumber}
                         </a>
                       ) : (
-                        <span className="font-medium">{invoice.invoiceNumber}</span>
+                        <span className={`font-medium ${invoice.status === 'in_progress' ? 'text-gray-400 italic' : ''}`}>
+                          {invoice.status === 'in_progress' ? 'Por generar' : invoice.invoiceNumber}
+                        </span>
                       )}
                     </td>
                     <td className="py-4 px-4 text-sm">
@@ -691,15 +778,21 @@ export function InvoiceTable({ onInvoiceClick }) {
                       />
                     </td>
                     <td className="py-4 px-4">
-                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${statusInfo.bgColor} ${statusInfo.textColor}`}>
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${statusInfo.bgColor} ${statusInfo.textColor}`}>
+                        {invoice.status === 'in_progress' && <Clock size={12} className="clock-pulse" />}
                         {statusInfo.label}
                       </span>
                     </td>
                     <td className="py-4 px-4 text-sm font-medium">
-                      {invoice.amount < 0 ? '-' : ''}${Math.abs(invoice.amount).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                      <span className={invoice.status === 'in_progress' ? 'flex items-center gap-1' : ''}>
+                        {invoice.amount < 0 ? '-' : ''}${Math.abs(invoice.amount).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                        {invoice.status === 'in_progress' && (
+                          <span className="text-xs text-gray-400 font-normal">(estimado)</span>
+                        )}
+                      </span>
                     </td>
                     <td className="py-4 px-4" onClick={(e) => e.stopPropagation()}>
-                      <ActionMenu invoice={invoice} />
+                      <ActionMenu invoice={invoice} hasFiscalData={hasFiscalData} onInvoiceClick={onInvoiceClick} />
                     </td>
                   </tr>
                 );

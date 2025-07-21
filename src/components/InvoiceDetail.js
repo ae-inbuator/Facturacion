@@ -11,7 +11,8 @@ import {
   CreditCard,
   FileText,
   RefreshCw,
-  DollarSign
+  DollarSign,
+  Clock
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { invoiceDetailsData } from '../data/invoiceDetailsData';
@@ -19,14 +20,18 @@ import { invoiceDetailsData } from '../data/invoiceDetailsData';
 export function InvoiceDetail({ invoice: initialInvoice, onBack }) {
   // Lista de casos disponibles
   const cases = [
+    { id: 'PENDIENTE', label: 'Caso 0: Período en curso', shortLabel: 'En curso' },
     { id: 'B12345678', label: 'Caso 1: Suscripción + Adicionales', shortLabel: 'Suscr. + Adicionales' },
     { id: 'B12345642', label: 'Caso 2: Recarga de saldo', shortLabel: 'Recarga' },
     { id: 'B12345634', label: 'Caso 3: Solo adicionales', shortLabel: 'Adicionales' },
-    { id: 'B12345656', label: 'Caso 4: Nota de crédito', shortLabel: 'Nota crédito' }
+    { id: 'B12345656', label: 'Caso 4: Nota de crédito', shortLabel: 'Nota crédito' },
+    { id: 'B12345657', label: 'Caso 5: Factura con NC aplicada', shortLabel: 'Con NC aplicada' }
   ];
   
+  // Buscar el índice del caso inicial - puede venir como string o como objeto
+  const initialId = typeof initialInvoice === 'string' ? initialInvoice : initialInvoice.invoiceNumber;
   const [currentCaseIndex, setCurrentCaseIndex] = useState(
-    cases.findIndex(c => c.id === initialInvoice.invoiceNumber) || 0
+    cases.findIndex(c => c.id === initialId) !== -1 ? cases.findIndex(c => c.id === initialId) : 0
   );
   const [showDropdown, setShowDropdown] = useState(false);
   
@@ -98,6 +103,10 @@ export function InvoiceDetail({ invoice: initialInvoice, onBack }) {
         return <AlertCircle className="w-5 h-5 text-orange-500" />;
       case 'overdue':
         return <XCircle className="w-5 h-5 text-red-500" />;
+      case 'in_progress':
+        return <Clock className="w-5 h-5 text-blue-500" />;
+      case 'credit_note':
+        return <FileText className="w-5 h-5 text-purple-500" />;
       default:
         return null;
     }
@@ -108,7 +117,9 @@ export function InvoiceDetail({ invoice: initialInvoice, onBack }) {
     const statusConfig = {
       paid: { label: 'Pagada', bg: 'bg-green-100', text: 'text-green-700' },
       pending: { label: 'Pendiente', bg: 'bg-orange-100', text: 'text-orange-700' },
-      overdue: { label: 'Vencida', bg: 'bg-red-100', text: 'text-red-700' }
+      overdue: { label: 'Vencida', bg: 'bg-red-100', text: 'text-red-700' },
+      in_progress: { label: 'En curso', bg: 'bg-blue-100', text: 'text-blue-700' },
+      credit_note: { label: 'Nota de crédito', bg: 'bg-purple-100', text: 'text-purple-700' }
     };
     
     const config = statusConfig[invoice.status];
@@ -205,6 +216,11 @@ export function InvoiceDetail({ invoice: initialInvoice, onBack }) {
                     {subscription.period && (
                       <p className="text-sm text-gray-500 mt-1">{subscription.period}</p>
                     )}
+                    {subscription.scheduled && (
+                      <div className="mt-2 inline-flex items-center px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
+                        Programado para el corte
+                      </div>
+                    )}
                   </div>
                   <div className="text-right ml-4">
                     {subscription.originalPrice !== subscription.finalPrice && (
@@ -251,18 +267,36 @@ export function InvoiceDetail({ invoice: initialInvoice, onBack }) {
           <div className="border-t border-gray-100">
             {invoice.additionalCharges.commissions.map((commission, index) => (
               <div key={index} className="px-6 py-4 border-b border-gray-50 last:border-0">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900">{commission.channel}</p>
-                    <p className="text-sm text-gray-500 mt-1">
-                      {commission.orders} órdenes • {commission.commission}% de comisión
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Total vendido: {formatCurrency(commission.totalSales)}
-                    </p>
+                <button
+                  className="w-full text-left hover:bg-gray-50 -mx-6 px-6 -my-4 py-4 transition-colors"
+                  onClick={() => {
+                    // Si hay un callback onCommissionClick, llamarlo
+                    if (window.onCommissionClick) {
+                      window.onCommissionClick(commission.channel);
+                    }
+                  }}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-gray-900 hover:text-blue-600 transition-colors">{commission.channel}</p>
+                        {commission.live && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                            En vivo
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {commission.orders} órdenes • {commission.commission}% de comisión
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Total vendido: {formatCurrency(commission.totalSales)}
+                      </p>
+                      <p className="text-xs text-blue-600 mt-1">Ver detalle de pedidos →</p>
+                    </div>
+                    <p className="font-medium ml-4">{formatCurrency(commission.amount)}</p>
                   </div>
-                  <p className="font-medium ml-4">{formatCurrency(commission.amount)}</p>
-                </div>
+                </button>
               </div>
             ))}
           </div>
@@ -301,9 +335,19 @@ export function InvoiceDetail({ invoice: initialInvoice, onBack }) {
               <div key={index} className="px-6 py-4 border-b border-gray-50 last:border-0">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <p className="font-medium text-gray-900">{notification.type}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-gray-900">{notification.type}</p>
+                      {notification.live && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                          En vivo
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-gray-500 mt-1">
-                      {notification.exceeded} {notification.unit}s adicionales • ${notification.costPerUnit} por {notification.unit}
+                      {notification.exceeded > 0 
+                        ? `${notification.exceeded} ${notification.unit}s adicionales • ${notification.costPerUnit} por ${notification.unit}`
+                        : `Dentro del límite incluido`
+                      }
                     </p>
                     <p className="text-sm text-gray-500">
                       Uso total: {notification.used} de {notification.included} incluidos
@@ -345,12 +389,35 @@ export function InvoiceDetail({ invoice: initialInvoice, onBack }) {
       subtotal += invoice.rechargeAmount;
     }
 
-    // Nota de crédito
-    if (invoice.creditNote) {
-      discounts += invoice.creditNote.creditAmount;
+    // Nota de crédito aplicada
+    if (invoice.creditNoteApplied) {
+      discounts += invoice.creditNoteApplied.creditAmount;
     }
 
-    return { subtotal, discounts, total: subtotal - discounts };
+    // Para notas de crédito, usar el total directo sin IVA
+    if (invoice.status === 'credit_note' && invoice.creditNoteInfo) {
+      const amount = invoice.creditNoteInfo.amount;
+      // El monto ya incluye IVA, calculamos hacia atrás
+      const subtotalNC = amount / 1.16;
+      const ivaNC = amount - subtotalNC;
+      return { 
+        subtotal: -subtotalNC, 
+        discounts: 0, 
+        iva: -ivaNC,
+        total: -amount 
+      };
+    }
+
+    // Calcular base después de descuentos
+    const baseAmount = subtotal - discounts;
+    
+    // Calcular IVA (16%)
+    const iva = baseAmount * 0.16;
+    
+    // Total final
+    const total = baseAmount + iva;
+
+    return { subtotal, discounts, iva, total };
   };
 
   const totals = calculateTotals();
@@ -371,9 +438,11 @@ export function InvoiceDetail({ invoice: initialInvoice, onBack }) {
                 Volver a facturas
               </Button>
               
-              <Button variant="outline" className="gap-2">
-                Exportar factura
-              </Button>
+              {invoice.status !== 'in_progress' && (
+                <Button variant="outline" className="gap-2">
+                  Exportar factura
+                </Button>
+              )}
             </div>
             
             {/* Navegación de casos */}
@@ -442,7 +511,9 @@ export function InvoiceDetail({ invoice: initialInvoice, onBack }) {
           <div className="px-8 pb-6">
             <div className="flex items-center gap-3">
               <FileText className="w-5 h-5 text-gray-400" />
-              <h1 className="text-xl font-semibold">Factura n.° {invoice.invoiceNumber}</h1>
+              <h1 className="text-xl font-semibold">
+              {invoice.status === 'in_progress' ? 'Período en curso' : `Factura n.° ${invoice.invoiceNumber}`}
+            </h1>
               {getStatusBadge()}
             </div>
             {invoice.documentType && (
@@ -454,42 +525,68 @@ export function InvoiceDetail({ invoice: initialInvoice, onBack }) {
         {/* Contenido principal */}
         <div className="p-8">
           <div className="max-w-4xl mx-auto">
+            {/* Indicador en vivo para facturas en curso */}
+            {invoice.liveIndicator?.show && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                    <span className="text-sm font-medium text-blue-700">EN VIVO</span>
+                  </div>
+                  <p className="text-sm text-blue-600">{invoice.liveIndicator.text}</p>
+                </div>
+                <p className="text-xs text-blue-500">{invoice.liveIndicator.lastUpdate}</p>
+              </div>
+            )}
+
             {/* Información de fecha y total */}
             <div className="grid grid-cols-2 gap-8 mb-8">
               <div>
                 <h2 className="text-sm font-medium text-gray-700 mb-2">Ciclo de facturación</h2>
-                <p className="text-gray-900">Esta factura se emitió el {invoice.issueDate}</p>
+                <p className="text-gray-900">
+                  {invoice.status === 'in_progress' 
+                    ? `Período actual: ${invoice.billingPeriod}` 
+                    : `Esta factura se emitió el ${invoice.issueDate}`
+                  }
+                </p>
               </div>
               <div className="text-right">
-                <p className="text-sm text-gray-700 mb-2">Total de la factura</p>
-                <p className="text-3xl font-semibold text-gray-900">
-                  {formatCurrency(Math.abs(invoice.total))}
+                <p className="text-sm text-gray-700 mb-2">
+                  {invoice.status === 'in_progress' ? 'Total estimado' : 'Total de la factura'}
                 </p>
+                <p className="text-3xl font-semibold text-gray-900">
+                  {formatCurrency(Math.abs(totals.total))}
+                </p>
+                {invoice.status === 'in_progress' && (
+                  <p className="text-xs text-gray-500 mt-1">Se cobrará el {invoice.nextCutDate}</p>
+                )}
               </div>
             </div>
 
             {/* Método de pago */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8">
-              <div className="flex items-center gap-4">
-                {invoice.paymentMethod === 'VISA •••• 1234' ? (
-                  <div className="w-16 h-10 bg-gradient-to-r from-blue-600 to-blue-700 rounded flex items-center justify-center text-white font-bold text-xs">
-                    VISA
-                  </div>
-                ) : invoice.paymentMethod.includes('American Express') ? (
-                  <div className="w-16 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded flex items-center justify-center text-white font-bold text-xs">
-                    AMEX
-                  </div>
-                ) : (
-                  <CreditCard className="w-10 h-10 text-gray-400" />
-                )}
-                <div>
-                  <p className="font-medium text-gray-900">{invoice.paymentMethod}</p>
-                  {invoice.cardHolder && (
-                    <p className="text-sm text-gray-500">{invoice.cardHolder}</p>
+            {invoice.status !== 'in_progress' && (
+              <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8">
+                <div className="flex items-center gap-4">
+                  {invoice.paymentMethod === 'VISA •••• 1234' ? (
+                    <div className="w-16 h-10 bg-gradient-to-r from-blue-600 to-blue-700 rounded flex items-center justify-center text-white font-bold text-xs">
+                      VISA
+                    </div>
+                  ) : invoice.paymentMethod.includes('American Express') ? (
+                    <div className="w-16 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded flex items-center justify-center text-white font-bold text-xs">
+                      AMEX
+                    </div>
+                  ) : (
+                    <CreditCard className="w-10 h-10 text-gray-400" />
                   )}
+                  <div>
+                    <p className="font-medium text-gray-900">{invoice.paymentMethod}</p>
+                    {invoice.cardHolder && (
+                      <p className="text-sm text-gray-500">{invoice.cardHolder}</p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Timeline de pagos */}
             {renderPaymentTimeline()}
@@ -514,28 +611,74 @@ export function InvoiceDetail({ invoice: initialInvoice, onBack }) {
                   </div>
                 )}
 
-                {/* Nota de crédito */}
-                {invoice.creditNote && (
+                {/* Nota de crédito aplicada */}
+                {invoice.creditNoteApplied && (
                   <div className="bg-green-50 rounded-lg border border-green-200 p-6">
                     <div className="flex items-start gap-3">
                       <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
                       <div className="flex-1">
-                        <p className="font-medium text-green-900">{invoice.creditNote.reason}</p>
-                        <p className="text-sm text-green-700 mt-1">{invoice.creditNote.description}</p>
+                        <p className="font-medium text-green-900">{invoice.creditNoteApplied.reason}</p>
+                        <p className="text-sm text-green-700 mt-1">{invoice.creditNoteApplied.description}</p>
                         <div className="mt-4 pt-4 border-t border-green-200">
                           <div className="flex justify-between text-sm mb-2">
                             <span className="text-green-700">Cargo original</span>
-                            <span>{formatCurrency(invoice.creditNote.originalCharge)}</span>
+                            <span>{formatCurrency(invoice.creditNoteApplied.originalCharge)}</span>
                           </div>
                           <div className="flex justify-between text-sm mb-2">
                             <span className="text-green-700">Crédito aplicado</span>
-                            <span className="text-green-600">-{formatCurrency(invoice.creditNote.creditAmount)}</span>
+                            <span className="text-green-600">-{formatCurrency(invoice.creditNoteApplied.creditAmount)}</span>
                           </div>
                           <div className="flex justify-between font-medium pt-2 border-t border-green-200">
                             <span>Monto neto</span>
-                            <span>{formatCurrency(invoice.creditNote.netAmount)}</span>
+                            <span>{formatCurrency(invoice.creditNoteApplied.netAmount)}</span>
                           </div>
                         </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Información de Nota de Crédito */}
+                {invoice.status === 'credit_note' && invoice.creditNoteInfo && (
+                  <div className="bg-purple-50 rounded-lg border border-purple-200 p-6">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-3 mb-3">
+                          <FileText className="w-5 h-5 text-purple-600" />
+                          <h3 className="font-semibold text-purple-900">Nota de crédito aplicada</h3>
+                        </div>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex gap-2">
+                            <span className="text-purple-700 font-medium">Folio:</span>
+                            <span className="text-purple-900">{invoice.creditNoteInfo.folio}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <span className="text-purple-700 font-medium">Fecha de emisión:</span>
+                            <span className="text-purple-900">{invoice.creditNoteInfo.issueDate}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <span className="text-purple-700 font-medium">Monto del crédito:</span>
+                            <span className="text-purple-900 font-semibold">{formatCurrency(invoice.creditNoteInfo.amount)}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <span className="text-purple-700 font-medium">Motivo:</span>
+                            <span className="text-purple-900">{invoice.creditNoteInfo.reason}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <span className="text-purple-700 font-medium">Factura relacionada:</span>
+                            <span className="text-purple-900">{invoice.creditNoteInfo.relatedInvoice}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <Button variant="outline" size="sm" className="gap-2">
+                          <Download className="w-4 h-4" />
+                          PDF
+                        </Button>
+                        <Button variant="outline" size="sm" className="gap-2">
+                          <Download className="w-4 h-4" />
+                          XML
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -556,7 +699,7 @@ export function InvoiceDetail({ invoice: initialInvoice, onBack }) {
                 <div className="space-y-3">
                   <div className="flex justify-between text-gray-600">
                     <span>Subtotal</span>
-                    <span>{formatCurrency(totals.subtotal)}</span>
+                    <span>{formatCurrency(Math.abs(totals.subtotal))}</span>
                   </div>
                   {totals.discounts > 0 && (
                     <div className="flex justify-between text-gray-600">
@@ -564,10 +707,27 @@ export function InvoiceDetail({ invoice: initialInvoice, onBack }) {
                       <span className="text-green-600">-{formatCurrency(totals.discounts)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-lg font-semibold pt-3 border-t border-gray-200">
-                    <span>Monto adeudado</span>
-                    <span>{formatCurrency(Math.abs(totals.total))}</span>
+                  {/* Mostrar IVA siempre */}
+                  <div className="flex justify-between text-gray-600">
+                    <span>IVA (16%)</span>
+                    <span className={totals.iva < 0 ? 'text-purple-600' : ''}>
+                      {totals.iva < 0 ? '-' : ''}{formatCurrency(Math.abs(totals.iva))}
+                    </span>
                   </div>
+                  <div className="flex justify-between text-lg font-semibold pt-3 border-t border-gray-200">
+                    <span>
+                      {invoice.status === 'in_progress' ? 'Monto estimado' : 
+                       invoice.status === 'credit_note' ? 'Total del crédito' : 'Monto adeudado'}
+                    </span>
+                    <span className={invoice.status === 'credit_note' ? 'text-purple-600' : ''}>
+                      {totals.total < 0 ? '-' : ''}{formatCurrency(Math.abs(totals.total))}
+                    </span>
+                  </div>
+                  {invoice.status === 'in_progress' && (
+                    <p className="text-xs text-gray-500 text-center pt-2">
+                      Este monto es un estimado y puede variar hasta el cierre del período
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

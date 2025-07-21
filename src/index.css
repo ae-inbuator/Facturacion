@@ -492,3 +492,204 @@ code {
     left: 100%;
   }
 }
+
+/* Estado En curso */
+.in-progress-pulse {
+  animation: inProgressPulse 2s ease-in-out infinite;
+}
+
+@keyframes inProgressPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* Fondo sutil para filas en curso */
+.bg-blue-50\/30 {
+  background-color: rgba(239, 246, 255, 0.3);
+}
+
+/* Pulse sutil para el icono de reloj */
+.clock-pulse {
+  animation: clockPulse 3s ease-in-out infinite;
+}
+
+@keyframes clockPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+/* Animación pulse estándar */
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
+}
+
+/* Estilos para comisiones clickeables */
+.commission-row-hover {
+  transition: all 0.15s ease;
+}
+
+.commission-row-hover:hover {
+  background-color: rgba(59, 130, 246, 0.04);
+  cursor: pointer;
+}
+
+.commission-row-hover:hover .commission-channel-text {
+  color: #2563eb;
+}
+
+/* Estilos adicionales */
+.-mx-6 { margin-left: -1.5rem; margin-right: -1.5rem; }
+.-my-4 { margin-top: -1rem; margin-bottom: -1rem; }
+.hover\:bg-gray-50:hover { background-color: #f9fafb; }
+.hover\:text-blue-600:hover { color: #2563eb; }
+.bg-purple-50 { background-color: #faf5ff; }
+.bg-purple-100 { background-color: #f3e8ff; }
+.text-purple-500 { color: #a855f7; }
+.text-purple-600 { color: #9333ea; }
+.text-purple-700 { color: #7c3aed; }
+.text-purple-900 { color: #581c87; }
+.border-purple-200 { border-color: #e9d5ff; }
+.animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.-space-x-2 > :not([hidden]) ~ :not([hidden]) { margin-left: -0.5rem; }
+.opacity-60 { opacity: 0.6; }
+.max-w-4xl { max-width: 56rem; }
+.max-h-\[90vh\] { max-height: 90vh; }
+.max-h-\[calc\(90vh-180px\)\] { max-height: calc(90vh - 180px); }
+button:focus { outline: 2px solid transparent; outline-offset: 2px; }
+.focus\:ring-2:focus { box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5); }
+.border-white { border-color: #ffffff; }
+.w-4 { width: 1rem; }
+.h-4 { height: 1rem; }
+.w-3\.5 { width: 0.875rem; }
+.h-3\.5 { height: 0.875rem; }
+.w-8 { width: 2rem; }
+.h-8 { height: 2rem; }
+.text-xs { font-size: 0.75rem; }
+.text-gray-700 { color: #374151; }
+.px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
+.py-0\.5 { padding-top: 0.125rem; padding-bottom: 0.125rem; }
+.mt-1 { margin-top: 0.25rem; }
+.h-12 { height: 3rem; }
+.whitespace-nowrap { white-space: nowrap; }
+.whitespace-normal { white-space: normal; }
+.last\:border-0:last-child { border-width: 0; }
+button { cursor: pointer; }
+
+/* Estilos para el modal de cambio de método de pago */
+.payment-method-radio {
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid #d1d5db;
+  border-radius: 50%;
+  transition: all 0.15s ease;
+}
+
+.payment-method-radio:checked {
+  border-color: #ef4444;
+  background-color: #ef4444;
+  background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3ccircle cx='8' cy='8' r='3'/%3e%3c/svg%3e");
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.payment-method-radio:focus {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px white, 0 0 0 4px #ef4444;
+}
+
+/* Animación para el modal de confirmación */
+.confirmation-modal-enter {
+  animation: confirmationModalEnter 0.2s ease-out;
+}
+
+@keyframes confirmationModalEnter {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Loading spinner mejorado */
+.loading-spinner {
+  border: 2px solid #fecaca;
+  border-top-color: #ef4444;
+  border-radius: 50%;
+  width: 3rem;
+  height: 3rem;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Transición suave para cambio de tarjeta */
+.card-transition {
+  transition: all 0.2s ease;
+}
+
+.card-transition:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Radio button custom */
+input[type="radio"].payment-radio {
+  width: 1rem;
+  height: 1rem;
+  color: #ef4444;
+  border-color: #d1d5db;
+}
+
+input[type="radio"].payment-radio:checked {
+  background-color: #ef4444;
+  border-color: #ef4444;
+}
+
+/* Estilos para cargos adicionales */
+.bg-amber-50 { background-color: #fffbeb; }
+.border-amber-200 { border-color: #fde68a; }
+.text-amber-600 { color: #d97706; }
+.text-amber-700 { color: #b45309; }
+.hover\:text-amber-800:hover { color: #92400e; }
+
+/* Disabled state mejorado */
+.disabled\:bg-gray-300:disabled { background-color: #d1d5db; }
+.disabled\:cursor-not-allowed:disabled { cursor: not-allowed; }
+
+/* Focus visible para accesibilidad */
+.focus\:outline-none:focus { outline: 2px solid transparent; outline-offset: 2px; }
+.focus\:ring-2:focus { box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.5); }
+.focus\:ring-red-500:focus { --tw-ring-color: #ef4444; }
+
+/* Shadow para modales */
+.shadow-xl { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }

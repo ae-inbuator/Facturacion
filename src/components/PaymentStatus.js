@@ -1,11 +1,10 @@
 import React from 'react';
-import { AlertTriangle, Info, Clock, XCircle } from 'lucide-react';
+import { AlertTriangle, Info, XCircle } from 'lucide-react';
 
 export function PaymentStatus({ 
   failureType, 
   daysRemaining, 
   amount, 
-  nextBillingDate,
   suspensionDate,
   onAction 
 }) {
@@ -17,9 +16,11 @@ export function PaymentStatus({
       icon: <AlertTriangle size={20} />,
       bgClass: 'bg-red-50 border-2 border-red-300',
       iconClass: 'text-red-600',
-      title: 'Tu suscripción no pudo cobrarse',
+      title: daysRemaining && daysRemaining > 0 && daysRemaining <= 2
+        ? `Quedan ${daysRemaining} ${daysRemaining === 1 ? 'día' : 'días'} de tu período de gracia`
+        : 'Tu suscripción no pudo cobrarse',
       subtitle: daysRemaining > 0 
-        ? `Tienes ${daysRemaining} días para actualizar tu pago o tus servicios se suspenderán el ${suspensionDate}`
+        ? `Tienes ${daysRemaining} ${daysRemaining === 1 ? 'día' : 'días'} para actualizar tu pago o tus servicios se suspenderán el ${suspensionDate}`
         : 'Tus servicios están suspendidos',
       actionText: 'Actualizar método de pago',
       actionClass: 'bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium text-sm',
@@ -30,23 +31,12 @@ export function PaymentStatus({
       icon: <Info size={16} />,
       bgClass: 'bg-amber-50 border-l-4 border-amber-400',
       iconClass: 'text-amber-600',
-      title: `No pudimos cobrar ${amount}`,
-      subtitle: `Se acumularán para tu próximo corte (${nextBillingDate})`,
-      actionText: 'Actualizar',
+      title: `No pudimos cobrar ${amount} por límite alcanzado`,
+      subtitle: `Reintentaremos el cobro diariamente. Mientras tanto, los nuevos cargos siguen acumulándose.`,
+      actionText: 'Actualizar método de pago',
       actionClass: 'text-amber-700 hover:text-amber-800 font-medium text-sm',
       priority: 'warning',
       dismissible: true
-    },
-    grace_period_warning: {
-      icon: <Clock size={20} />,
-      bgClass: 'bg-orange-50 border-2 border-orange-300',
-      iconClass: 'text-orange-600',
-      title: `Quedan ${daysRemaining} días de tu período de gracia`,
-      subtitle: 'Actualiza tu pago para evitar la suspensión de servicios',
-      actionText: 'Resolver ahora',
-      actionClass: 'bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-md font-medium text-sm',
-      priority: 'urgent',
-      dismissible: false
     },
     services_suspended: {
       icon: <XCircle size={20} />,

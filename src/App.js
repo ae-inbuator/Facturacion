@@ -8,7 +8,8 @@ import { InvoiceDetail } from './components/InvoiceDetail';
 import { InvoiceData } from './components/InvoiceData';
 import { PlanDetails } from './components/PlanDetails';
 import { PaymentStatus } from './components/PaymentStatus';
-import { ChangePaymentMethodModal } from './components/ChangePaymentMethodModal';
+import { CommissionDetail } from './components/CommissionDetail';
+import ChangePaymentMethodModal from './components/ChangePaymentMethodModal';
 import { invoiceDetailsData } from './data/invoiceDetailsData';
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
   const [hasInvoiceData, setHasInvoiceData] = useState(false); // Toggle para desarrollo
   const [paymentFailure, setPaymentFailure] = useState(null); // null o {type, daysRemaining, amount}
   const [showChangePaymentModal, setShowChangePaymentModal] = useState(false);
+  const [selectedCommission, setSelectedCommission] = useState(null); // Para CommissionDetail
 
   const handleAdditionalChargesClick = () => {
     setShowAdditionalChargesDetail(true);
@@ -28,9 +30,10 @@ export default function App() {
   };
 
   const handleInvoiceClick = (invoiceNumber) => {
+    // Para el detalle, solo necesitamos pasar el número/ID
     const invoice = invoiceDetailsData[invoiceNumber];
     if (invoice) {
-      setSelectedInvoice(invoice);
+      setSelectedInvoice(invoiceNumber);
     }
   };
 
@@ -49,12 +52,47 @@ export default function App() {
   const handleChangePaymentMethod = () => {
     setShowChangePaymentModal(true);
   };
+  
+  // Registrar callbacks globales
+  React.useEffect(() => {
+    // Callback para clicks en comisiones
+    window.onCommissionClick = (channel) => {
+      // Limpiar la vista de factura antes de mostrar comisiones
+      setSelectedInvoice(null);
+      setSelectedCommission({ channel });
+    };
+    
+    // Callback para abrir modal de cambio de método de pago
+    window.openChangePaymentModal = () => {
+      setShowChangePaymentModal(true);
+    };
+    
+    return () => {
+      delete window.onCommissionClick;
+      delete window.openChangePaymentModal;
+    };
+  }, []);
 
   if (showAdditionalChargesDetail) {
     return (
       <>
         <Sidebar />
         <AdditionalChargesDetail onBack={handleBackFromDetail} />
+      </>
+    );
+  }
+  
+  // Verificar CommissionDetail antes que InvoiceDetail para prioridad correcta
+  if (selectedCommission) {
+    return (
+      <>
+        <Sidebar />
+        <CommissionDetail 
+          channel={selectedCommission.channel}
+          totalCommission={0} // Estos valores se podrían pasar desde la factura
+          orders={0}
+          onBack={() => setSelectedCommission(null)}
+        />
       </>
     );
   }
@@ -118,16 +156,17 @@ export default function App() {
                       daysRemaining: 5,
                       suspensionDate: '22 de julio, 2025'
                     });
+                  } else if (value === 'subscription_failed_grace') {
+                    // Caso especial: Período de gracia (2 días)
+                    setPaymentFailure({
+                      type: 'subscription_failed',
+                      daysRemaining: 2,
+                      suspensionDate: '17 de julio, 2025'
+                    });
                   } else if (value === 'additional_charges_failed') {
                     setPaymentFailure({
                       type: 'additional_charges_failed',
-                      amount: '$650',
-                      nextBillingDate: '15 de agosto'
-                    });
-                  } else if (value === 'grace_period_warning') {
-                    setPaymentFailure({
-                      type: 'grace_period_warning',
-                      daysRemaining: 2
+                      amount: '$650'
                     });
                   } else if (value === 'services_suspended') {
                     setPaymentFailure({
@@ -140,8 +179,8 @@ export default function App() {
               >
                 <option value="none">✅ Al corriente</option>
                 <option value="subscription_failed">🔴 Suscripción fallida</option>
+                <option value="subscription_failed_grace">🔴 Período de gracia (2 días)</option>
                 <option value="additional_charges_failed">🟡 Cargos adicionales fallidos</option>
-                <option value="grace_period_warning">⏰ Período de gracia</option>
                 <option value="services_suspended">⛔ Servicios suspendidos</option>
               </select>
             </div>
@@ -155,7 +194,6 @@ export default function App() {
               failureType={paymentFailure.type}
               daysRemaining={paymentFailure.daysRemaining}
               amount={paymentFailure.amount}
-              nextBillingDate={paymentFailure.nextBillingDate}
               suspensionDate={paymentFailure.suspensionDate}
               onAction={handleChangePaymentMethod}
             />
@@ -202,20 +240,50 @@ export default function App() {
         />
 
         {/* Invoice Data */}
-        <InvoiceData hasData={hasInvoiceData} />
+        <InvoiceData 
+          hasData={hasInvoiceData} 
+          onConfigureClick={() => setHasInvoiceData(true)}
+        />
 
         {/* Invoice Table */}
-        <InvoiceTable onInvoiceClick={handleInvoiceClick} />
+        <InvoiceTable onInvoiceClick={handleInvoiceClick} hasFiscalData={hasInvoiceData} />
       </div>
 
       {/* Modals */}
       {showChangePaymentModal && (
         <ChangePaymentMethodModal
+          isOpen={showChangePaymentModal}
           onClose={() => setShowChangePaymentModal(false)}
-          currentCard={{
-            type: 'VISA',
-            last4: '1234'
+          onUpdate={(selectedMethod, shouldProcessNow) => {
+            console.log('Método actualizado:', selectedMethod, 'Procesar ahora:', shouldProcessNow);
+            // Aquí irían las llamadas a la API
+            setShowChangePaymentModal(false);
+            
+            // Si se procesó exitosamente, limpiar el estado de fallo
+            if (shouldProcessNow && paymentFailure) {
+              setPaymentFailure(null);
+            }
           }}
+          currentPaymentMethod={{ id: 'card-1' }}
+          savedCards={[
+            {
+              id: 'card-1',
+              brand: 'VISA',
+              last4: '1234',
+              expiryMonth: '12',
+              expiryYear: '2026',
+              name: 'Chicco Ole'
+            },
+            {
+              id: 'card-2', 
+              brand: 'Mastercard',
+              last4: '5678',
+              expiryMonth: '03',
+              expiryYear: '2025',
+              name: 'Chicco Ole'
+            }
+          ]}
+          pendingCharges={paymentFailure ? 650 : 0}
         />
       )}
     </div>
