@@ -1,0 +1,46 @@
+🎨 PROYECTO T1 FACTURACIÓN - PARA UX
+=====================================
+
+Hey [Nombre Diseñador]! Te paso el proyecto de Facturación para que le des tu magia ✨
+
+📦 RECURSOS:
+------------
+1. 🌐 Demo en vivo: https://facturacion-zeta.vercel.app/
+2. 💻 Código GitHub: https://github.com/ae-inbuator/Facturacion
+3. 📄 Documento completo: UX-HANDOFF-T1.md (en el repo)
+
+🎯 LO MÁS IMPORTANTE:
+--------------------
+• Dashboard principal con cards de resumen
+• Alertas de pago (banners rojos/amarillos)
+• Drawer lateral de desglose
+• Aplicar nuestro design system T1
+
+📱 NOTAS RÁPIDAS:
+----------------
+• 40% de usuarios en mobile
+• Colores actuales son placeholder
+• La funcionalidad ya está, solo falta que se vea pro
+• Mantener los flujos actuales
+
+🔴 PRIORIDADES:
+--------------
+1. Dashboard y alertas
+2. Mobile responsive
+3. Consistencia con T1
+4. Animaciones suaves
+
+📅 TIMELINE:
+-----------
+• Primera revisión: [FECHA]
+• Diseño final: [FECHA]
+
+💬 Cualquier duda me avisas!
+WhatsApp: [TU NÚMERO]
+Slack: #canal-facturacion
+
+---
+
+LINKS RÁPIDOS:
+• Demo: https://facturacion-zeta.vercel.app/
+• GitHub: https://github.com/ae-inbuator/Facturacion
