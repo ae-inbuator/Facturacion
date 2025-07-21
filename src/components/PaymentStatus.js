@@ -64,9 +64,6 @@ export function PaymentStatus({
   const config = configs[failureType];
   if (!config) return null;
 
-  // Para fallos de suscripción, mostrar timeline
-  const showTimeline = failureType === 'subscription_failed' && daysRemaining > 0;
-
   return (
     <div className={`rounded-lg p-4 ${config.bgClass} payment-alert-animation`}>
       <div className="flex items-start gap-3">
@@ -81,13 +78,6 @@ export function PaymentStatus({
           <p className="text-sm text-gray-600 mt-0.5">
             {config.subtitle}
           </p>
-          
-          {/* Timeline para fallos de suscripción */}
-          {showTimeline && (
-            <div className="mt-3 bg-white/50 rounded-md p-3">
-              <PaymentRetryTimeline daysRemaining={daysRemaining} />
-            </div>
-          )}
         </div>
 
         <button
@@ -96,52 +86,6 @@ export function PaymentStatus({
         >
           {config.actionText}
         </button>
-      </div>
-    </div>
-  );
-}
-
-// Componente de timeline para mostrar intentos de cobro
-function PaymentRetryTimeline({ daysRemaining }) {
-  const attempts = [
-    { day: 0, status: 'failed', label: 'Intento inicial' },
-    { day: 2, status: daysRemaining <= 5 ? 'failed' : 'pending', label: '2do intento' },
-    { day: 5, status: daysRemaining <= 2 ? 'failed' : 'pending', label: '3er intento' },
-    { day: 7, status: 'suspension', label: 'Suspensión' }
-  ];
-
-  const currentDay = 7 - daysRemaining;
-
-  return (
-    <div className="space-y-1">
-      <p className="text-xs font-medium text-gray-700 mb-2">Cronograma de cobros:</p>
-      <div className="relative">
-        {/* Línea de progreso */}
-        <div className="absolute top-2 left-0 right-0 h-0.5 bg-gray-200"></div>
-        <div 
-          className="absolute top-2 left-0 h-0.5 bg-red-500 transition-all duration-500"
-          style={{ width: `${(currentDay / 7) * 100}%` }}
-        ></div>
-        
-        {/* Puntos del timeline */}
-        <div className="relative flex justify-between">
-          {attempts.map((attempt, index) => (
-            <div key={index} className="flex flex-col items-center">
-              <div className={`
-                w-4 h-4 rounded-full border-2 
-                ${attempt.status === 'failed' ? 'bg-red-500 border-red-500' : ''}
-                ${attempt.status === 'pending' ? 'bg-white border-gray-300' : ''}
-                ${attempt.status === 'suspension' ? 'bg-gray-500 border-gray-500' : ''}
-              `}></div>
-              <span className="text-xs text-gray-600 mt-1 whitespace-nowrap">
-                {attempt.label}
-              </span>
-              <span className="text-xs text-gray-400">
-                Día {attempt.day}
-              </span>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );
