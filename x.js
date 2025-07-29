@@ -1,457 +1,621 @@
-import React from 'react';
-import { 
-  ArrowLeft, 
-  Download, 
-  ChevronDown, 
-  CheckCircle, 
-  XCircle, 
-  Clock,
-  ShoppingBag,
-  Package,
-  CreditCard,
-  MessageCircle,
-  Mail,
-  AlertCircle,
-  Calendar,
-  FileText
-} from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { ChevronDown, Search, MoreHorizontal, ChevronLeft, ChevronRight, Download, Calendar, X, FileText } from 'lucide-react';
 import { Button } from './ui/button';
+import { Checkbox } from './ui/checkbox';
+import { Input } from './ui/input';
 
-export function InvoiceDetail({ invoice, onBack }) {
-  // Función para renderizar el timeline de cobro
-  const renderPaymentTimeline = () => {
-    if (!invoice.paymentAttempts || invoice.paymentAttempts.length === 0) return null;
+// Opciones del filtro de período
+const periodOptions = [
+  { 
+    label: "Este período (15 jul - 14 ago 2025)", 
+    value: "current_period",
+    type: "period",
+    startDate: "2025-07-15",
+    endDate: "2025-08-14"
+  },
+  { 
+    label: "Período anterior (15 jun - 14 jul 2025)", 
+    value: "last_period",
+    type: "period",
+    startDate: "2025-06-15",
+    endDate: "2025-07-14"
+  },
+  { type: "separator" },
+  { 
+    label: "Agosto 2025", 
+    value: "2025-08",
+    type: "month",
+    startDate: "2025-08-01",
+    endDate: "2025-08-31"
+  },
+  { 
+    label: "Julio 2025", 
+    value: "2025-07",
+    type: "month",
+    startDate: "2025-07-01",
+    endDate: "2025-07-31"
+  },
+  { 
+    label: "Junio 2025", 
+    value: "2025-06",
+    type: "month",
+    startDate: "2025-06-01",
+    endDate: "2025-06-30"
+  },
+  { 
+    label: "Mayo 2025", 
+    value: "2025-05",
+    type: "month",
+    startDate: "2025-05-01",
+    endDate: "2025-05-31"
+  },
+  { type: "separator" },
+  { 
+    label: "Últimos 3 meses", 
+    value: "last_3_months",
+    type: "range" 
+  },
+  { 
+    label: "Todo 2025", 
+    value: "2025",
+    type: "year",
+    startDate: "2025-01-01",
+    endDate: "2025-12-31"
+  },
+  { 
+    label: "Personalizado...", 
+    value: "custom",
+    type: "custom" 
+  }
+];
 
-    return (
-      <div className="bg-white rounded-2xl p-6 shadow-sm mb-8">
-        <h3 className="text-lg font-semibold mb-4">Historial de cobro</h3>
-        <div className="relative">
-          {invoice.paymentAttempts.map((attempt, index) => (
-            <div key={index} className="flex items-start gap-4 mb-4 last:mb-0">
-              <div className="relative">
-                {attempt.status === 'success' ? (
-                  <CheckCircle className="w-5 h-5 text-green-500" />
-                ) : (
-                  <XCircle className="w-5 h-5 text-red-500" />
-                )}
-                {index < invoice.paymentAttempts.length - 1 && (
-                  <div className="absolute top-6 left-2.5 w-0.5 h-full bg-gray-200" />
-                )}
-              </div>
-              <div className="flex-1">
-                <div className="font-medium text-sm">
-                  {attempt.status === 'success' ? 'Cobro exitoso' : 'Cobro fallido'}
-                </div>
-                <div className="text-xs text-gray-500">{attempt.date} a las {attempt.time}</div>
-                {attempt.message && (
-                  <div className="text-xs text-gray-600 mt-1">{attempt.message}</div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
+// Opciones de estado
+const statusOptions = [
+  { label: "Todos", value: "all" },
+  { label: "Pagada", value: "paid", color: "text-green-600" },
+  { label: "Pendiente", value: "pending", color: "text-orange-600" },
+  { label: "Vencida", value: "overdue", color: "text-red-600" }
+];
 
-  // Función para renderizar desglose de suscripciones
-  const renderSubscriptionBreakdown = () => {
-    if (!invoice.subscriptions || invoice.subscriptions.length === 0) return null;
+// Opciones de tipo de documento
+const documentTypeOptions = [
+  { label: "Todos", value: "all" },
+  { label: "Factura", value: "invoice" },
+  { label: "Nota de crédito", value: "credit_note" },
+  { label: "Complemento de pago", value: "payment_complement" }
+];
 
-    const subtotal = invoice.subscriptions.reduce((sum, sub) => sum + sub.finalPrice, 0);
-    const discount = invoice.subscriptions.reduce((sum, sub) => sum + (sub.discount || 0), 0);
+const invoices = [
+  {
+    id: '1',
+    date: 'Jul 09, 2025',
+    invoiceNumber: 'B12345678',
+    service: 'T1tienda',
+    concept: 'Plan Intermedio',
+    documentType: 'Factura',
+    amount: 810.44,
+    status: 'paid'
+  },
+  {
+    id: '2',
+    date: 'Jul 09, 2025',
+    invoiceNumber: 'B12345642',
+    service: 'T1envíos',
+    concept: 'Recarga de saldo',
+    documentType: 'Nota de crédito',
+    amount: 2834.99,
+    status: 'paid'
+  },
+  {
+    id: '3',
+    date: 'Jul 09, 2025',
+    invoiceNumber: 'B12345634',
+    service: 'T1envíos',
+    concept: 'Compra de material de empaque',
+    documentType: 'Factura',
+    amount: 231.60,
+    status: 'paid'
+  },
+  {
+    id: '4',
+    date: 'Jul 09, 2025',
+    invoiceNumber: 'B12345656',
+    service: 'T1pagos',
+    concept: 'Nota crédito',
+    documentType: 'Nota de crédito',
+    amount: 10250.00,
+    status: 'paid'
+  },
+  {
+    id: '5',
+    date: 'Jun 28, 2025',
+    invoiceNumber: 'A67563410',
+    service: 'T1envíos',
+    concept: 'Cargos por venta y/o envío',
+    documentType: 'Factura',
+    amount: 1960.60,
+    status: 'paid'
+  },
+  {
+    id: '6',
+    date: 'Jun 27, 2025',
+    invoiceNumber: 'A67509487',
+    service: 'T1envíos',
+    concept: 'Cargos por venta y/o envío',
+    documentType: 'Factura',
+    amount: 744.76,
+    status: 'paid'
+  }
+];
 
-    return (
-      <div className="mb-8">
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-          SUSCRIPCIONES
-        </h3>
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          {invoice.subscriptions.map((subscription, index) => (
-            <div key={index} className="p-6 border-b border-gray-100 last:border-0">
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <h4 className="font-semibold text-lg">{subscription.name}</h4>
-                  {subscription.prorated && (
-                    <p className="text-sm text-gray-500 mt-1">
-                      Prorrateado: {subscription.daysCharged} de {subscription.totalDays} días
-                    </p>
-                  )}
-                </div>
-                <div className="text-right">
-                  {subscription.originalPrice !== subscription.finalPrice && (
-                    <div className="text-sm text-gray-400 line-through">
-                      ${subscription.originalPrice.toLocaleString()}
-                    </div>
-                  )}
-                  <div className="text-xl font-semibold">
-                    ${subscription.finalPrice.toLocaleString()}
-                  </div>
-                </div>
-              </div>
-              {subscription.hasDiscount && (
-                <span className="inline-block bg-green-50 text-green-600 text-xs px-2 py-1 rounded-full">
-                  {subscription.discountText}
-                </span>
-              )}
-            </div>
-          ))}
-          
-          {/* Resumen */}
-          <div className="bg-gray-50 p-6">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Subtotal</span>
-                <span>${(subtotal + discount).toLocaleString()}</span>
-              </div>
-              {discount > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Descuentos</span>
-                  <span className="text-green-600">-${discount.toLocaleString()}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-lg font-semibold pt-2 border-t">
-                <span>Total suscripciones</span>
-                <span>${subtotal.toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
+const statusConfig = {
+  paid: {
+    label: 'Pagada',
+    bgColor: 'bg-green-50',
+    textColor: 'text-green-600'
+  },
+  pending: {
+    label: 'Pendiente',
+    bgColor: 'bg-orange-50',
+    textColor: 'text-orange-600'
+  },
+  overdue: {
+    label: 'Vencida',
+    bgColor: 'bg-red-50',
+    textColor: 'text-red-600'
+  }
+};
 
-  // Función para renderizar desglose de adicionales
-  const renderAdditionalCharges = () => {
-    if (!invoice.additionalCharges) return null;
+// Componente CustomDropdown
+const CustomDropdown = ({ label, value, options, onChange, icon, className = '' }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
-    const { commissions, notifications } = invoice.additionalCharges;
-    const totalCommissions = commissions?.reduce((sum, com) => sum + com.amount, 0) || 0;
-    const totalNotifications = notifications?.reduce((sum, notif) => sum + notif.amount, 0) || 0;
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
 
-    return (
-      <div className="mb-8">
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-          CARGOS ADICIONALES
-        </h3>
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
-        {/* Aviso si se cobró por límite */}
-        {invoice.chargedByLimit && (
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-orange-900">
-                Cobro automático por límite alcanzado
-              </p>
-              <p className="text-xs text-orange-700 mt-1">
-                Alcanzaste tu límite de crédito de ${invoice.creditLimit?.toLocaleString()}, 
-                por lo que se procesó el cobro automáticamente.
-              </p>
-            </div>
-          </div>
-        )}
+  const selectedOption = options.find(opt => opt.value === value);
 
-        {/* Comisiones */}
-        {commissions && commissions.length > 0 && (
-          <div className="mb-6">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">Comisiones por ventas</h4>
-            <div className="grid gap-3">
-              {commissions.map((commission, index) => (
-                <div 
-                  key={index}
-                  className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => alert(`Ver detalle de órdenes de ${commission.channel}`)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${commission.iconBg}`}>
-                        {commission.icon}
-                      </div>
-                      <div>
-                        <h5 className="font-medium">{commission.channel}</h5>
-                        <p className="text-xs text-gray-500">
-                          {commission.orders} órdenes • {commission.commission}% comisión
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold">${commission.amount.toLocaleString()}</div>
-                      <div className="text-xs text-gray-500">
-                        de ${commission.totalSales.toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Notificaciones */}
-        {notifications && notifications.length > 0 && (
-          <div className="mb-6">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">Notificaciones adicionales</h4>
-            <div className="grid gap-3">
-              {notifications.map((notification, index) => (
-                <div key={index} className="bg-white rounded-xl p-4 shadow-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${notification.iconBg}`}>
-                        {notification.icon}
-                      </div>
-                      <div>
-                        <h5 className="font-medium">{notification.type}</h5>
-                        <p className="text-xs text-gray-500">
-                          ${notification.costPerUnit} por {notification.unit}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="font-semibold">${notification.amount.toLocaleString()}</div>
-                  </div>
-                  <div className="mt-3">
-                    <div className="flex justify-between text-xs text-gray-600 mb-1">
-                      <span>Usado: {notification.used.toLocaleString()} de {notification.included.toLocaleString()}</span>
-                      <span className="text-orange-600 font-medium">
-                        +{notification.exceeded.toLocaleString()} extra
-                      </span>
-                    </div>
-                    <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-orange-500 rounded-full"
-                        style={{ width: `${Math.min((notification.used / notification.included) * 100, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Resumen de adicionales */}
-        <div className="bg-gray-50 rounded-xl p-4">
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Comisiones</span>
-              <span>${totalCommissions.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Notificaciones</span>
-              <span>${totalNotifications.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between text-base font-semibold pt-2 border-t">
-              <span>Total adicionales</span>
-              <span>${(totalCommissions + totalNotifications).toLocaleString()}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Función para renderizar información fiscal
-  const renderFiscalInfo = () => (
-    <div className="bg-white rounded-2xl p-6 shadow-sm">
-      <h3 className="text-lg font-semibold mb-4">Información fiscal</h3>
+  return (
+    <div className={`relative ${className}`} ref={dropdownRef}>
+      <Button
+        variant="outline"
+        className="text-sm justify-between hover:bg-gray-50 transition-colors px-3"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <span className="flex items-center gap-2">
+          {selectedOption?.label || label}
+        </span>
+        <ChevronDown size={14} className={`ml-2 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </Button>
       
-      <div className="grid grid-cols-2 gap-6 mb-6">
-        <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-2">Emisor</h4>
-          <p className="text-sm font-medium">{invoice.fiscal.issuer.name}</p>
-          <p className="text-sm text-gray-600">RFC: {invoice.fiscal.issuer.rfc}</p>
-          <p className="text-sm text-gray-600">{invoice.fiscal.issuer.address}</p>
+      {isOpen && (
+        <div className="absolute z-50 mt-2 w-full min-w-[200px] bg-white border border-gray-200 rounded-lg shadow-lg max-h-96 overflow-auto">
+          {options.map((option, index) => {
+            if (option.type === 'separator') {
+              return <div key={index} className="h-px bg-gray-200 my-1" />;
+            }
+            
+            const isSelected = option.value === value;
+            
+            return (
+              <button
+                key={option.value}
+                className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors first:rounded-t-lg last:rounded-b-lg ${
+                  isSelected ? 'bg-gray-50 font-medium' : ''
+                }`}
+                onClick={() => {
+                  onChange(option.value);
+                  setIsOpen(false);
+                }}
+              >
+                <span className={option.color || ''}>{option.label}</span>
+              </button>
+            );
+          })}
         </div>
-        <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-2">Receptor</h4>
-          <p className="text-sm font-medium">{invoice.fiscal.receiver.name}</p>
-          <p className="text-sm text-gray-600">RFC: {invoice.fiscal.receiver.rfc}</p>
-          <p className="text-sm text-gray-600">{invoice.fiscal.receiver.address}</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-        <div>
-          <p className="text-xs text-gray-500">Forma de pago</p>
-          <p className="text-sm font-medium">{invoice.fiscal.paymentMethod}</p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-500">Método de pago</p>
-          <p className="text-sm font-medium">{invoice.fiscal.paymentType}</p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-500">Uso de CFDI</p>
-          <p className="text-sm font-medium">{invoice.fiscal.cfdiUse}</p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-500">Folio fiscal</p>
-          <p className="text-sm font-medium">{invoice.fiscal.fiscalFolio}</p>
-        </div>
-      </div>
-
-      {/* Desglose fiscal */}
-      <div className="mt-6 pt-4 border-t">
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Subtotal</span>
-            <span>${invoice.fiscal.subtotal.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">IVA (16%)</span>
-            <span>${invoice.fiscal.tax.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between text-lg font-semibold pt-2 border-t">
-            <span>Total</span>
-            <span>${invoice.fiscal.total.toLocaleString()}</span>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
+};
 
-  const getStatusBadge = () => {
-    const statusConfig = {
-      paid: { label: 'Pagada', bg: 'bg-green-50', text: 'text-green-600', icon: <CheckCircle className="w-4 h-4" /> },
-      pending: { label: 'Pendiente', bg: 'bg-orange-50', text: 'text-orange-600', icon: <Clock className="w-4 h-4" /> },
-      overdue: { label: 'Vencida', bg: 'bg-red-50', text: 'text-red-600', icon: <XCircle className="w-4 h-4" /> }
-    };
+
+
+export function InvoiceTable({ onInvoiceClick }) {
+  const [selectedItems, setSelectedItems] = useState(new Set());
+  const [selectAll, setSelectAll] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pdfSelections, setPdfSelections] = useState(new Set());
+  const [xmlSelections, setXmlSelections] = useState(new Set());
+  
+  // Nuevos estados para filtros
+  const [selectedPeriod, setSelectedPeriod] = useState('current_period');
+  const [selectedStatus, setSelectedStatus] = useState('all');
+  const [selectedDocType, setSelectedDocType] = useState('all');
+
+  const itemsPerPage = 10;
+  
+  // Filtrar facturas según los filtros activos
+  const filteredInvoices = invoices.filter(invoice => {
+    // Filtro de búsqueda
+    if (searchQuery) {
+      const search = searchQuery.toLowerCase();
+      if (!invoice.invoiceNumber.toLowerCase().includes(search) &&
+          !invoice.amount.toString().includes(search) &&
+          !invoice.service.toLowerCase().includes(search)) {
+        return false;
+      }
+    }
     
-    const config = statusConfig[invoice.status];
-    return (
-      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${config.bg} ${config.text}`}>
-        {config.icon}
-        {config.label}
-      </span>
-    );
+    // Filtro de estado
+    if (selectedStatus !== 'all' && invoice.status !== selectedStatus) {
+      return false;
+    }
+    
+    // Filtro de tipo de documento
+    if (selectedDocType !== 'all') {
+      if (selectedDocType === 'invoice' && invoice.documentType !== 'Factura') return false;
+      if (selectedDocType === 'credit_note' && invoice.documentType !== 'Nota de crédito') return false;
+      if (selectedDocType === 'payment_complement' && invoice.documentType !== 'Complemento de pago') return false;
+    }
+    
+    return true;
+  });
+  
+  const totalItems = 23456; // Este sería el total real de la base de datos
+  const totalFilteredItems = filteredInvoices.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+  const handleSelectAll = (checked) => {
+    setSelectAll(checked);
+    if (checked) {
+      setSelectedItems(new Set(filteredInvoices.map(invoice => invoice.id)));
+    } else {
+      setSelectedItems(new Set());
+    }
+  };
+
+  const handleSelectItem = (itemId, checked) => {
+    const newSelected = new Set(selectedItems);
+    if (checked) {
+      newSelected.add(itemId);
+    } else {
+      newSelected.delete(itemId);
+    }
+    setSelectedItems(newSelected);
+    setSelectAll(newSelected.size === filteredInvoices.length);
+  };
+
+  const handlePdfSelection = (itemId, checked) => {
+    const newPdfSelections = new Set(pdfSelections);
+    if (checked) {
+      newPdfSelections.add(itemId);
+    } else {
+      newPdfSelections.delete(itemId);
+    }
+    setPdfSelections(newPdfSelections);
+  };
+
+  const handleXmlSelection = (itemId, checked) => {
+    const newXmlSelections = new Set(xmlSelections);
+    if (checked) {
+      newXmlSelections.add(itemId);
+    } else {
+      newXmlSelections.delete(itemId);
+    }
+    setXmlSelections(newXmlSelections);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="ml-60">
-        {/* Header fijo */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 z-10">
-          <div className="px-8 py-4 flex justify-between items-center">
-            <Button 
-              variant="ghost" 
-              onClick={onBack}
-              className="gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Volver a facturas
-            </Button>
-            <Button variant="outline" className="gap-2">
-              <Download className="w-4 h-4" />
-              Exportar factura
-              <ChevronDown className="w-4 h-4" />
-            </Button>
+    <div className="bg-white rounded-2xl shadow-sm">
+      {/* Header */}
+      <div className="p-6 border-b border-gray-100">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xl font-semibold">Facturas emitidas</h3>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-gray-600">
+              {totalItems.toLocaleString()} comprobantes disponibles
+            </span>
+            {selectedItems.size > 0 && (
+              <>
+                <span className="text-sm text-blue-600">
+                  {selectedItems.size} facturas seleccionadas
+                </span>
+                <Button className="bg-blue-600 hover:bg-blue-700 text-sm">
+                  Descargar
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Contenido principal */}
-        <div className="p-8">
-          {/* Información principal */}
-          <div className="bg-white rounded-2xl p-8 shadow-sm mb-8">
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                  Factura {invoice.invoiceNumber}
-                </h1>
-                <p className="text-lg text-gray-600">{invoice.documentType}</p>
-              </div>
-              {getStatusBadge()}
-            </div>
-
-            <div className="text-5xl font-bold text-gray-900 mb-8">
-              ${invoice.total.toLocaleString()}
-              <span className="text-2xl font-normal text-gray-500"> MXN</span>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              <div>
-                <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-                  <Calendar className="w-4 h-4" />
-                  Fecha de emisión
-                </div>
-                <p className="font-medium">{invoice.issueDate}</p>
-              </div>
-              <div>
-                <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-                  <FileText className="w-4 h-4" />
-                  Período facturado
-                </div>
-                <p className="font-medium">{invoice.billingPeriod}</p>
-              </div>
-              <div>
-                <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-                  <CreditCard className="w-4 h-4" />
-                  Método de pago
-                </div>
-                <p className="font-medium">{invoice.paymentMethod}</p>
-              </div>
-              <div>
-                <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-                  <Calendar className="w-4 h-4" />
-                  Próximo corte
-                </div>
-                <p className="font-medium">{invoice.nextCutDate}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Timeline de cobro (si aplica) */}
-          {renderPaymentTimeline()}
-
-          {/* Caso especial: Recarga de saldo */}
-          {invoice.rechargeAmount && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm mb-8">
-              <h3 className="text-lg font-semibold mb-4">Detalle de la recarga</h3>
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-gray-600">Recarga de saldo para T1envíos</p>
-                  <p className="text-sm text-gray-500 mt-1">El saldo se acreditó inmediatamente a tu cuenta</p>
-                </div>
-                <div className="text-2xl font-semibold">
-                  ${invoice.rechargeAmount.toLocaleString()}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Caso especial: Nota de crédito */}
-          {invoice.creditNote && (
-            <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-8">
-              <h3 className="text-lg font-semibold text-green-900 mb-4">Detalle de la nota de crédito</h3>
-              <div className="space-y-3">
-                <div>
-                  <p className="font-medium text-green-900">{invoice.creditNote.reason}</p>
-                  <p className="text-sm text-green-700 mt-1">{invoice.creditNote.description}</p>
-                </div>
-                <div className="pt-3 border-t border-green-200">
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-green-700">Cargo original</span>
-                    <span className="font-medium">${invoice.creditNote.originalCharge.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-green-700">Crédito aplicado</span>
-                    <span className="font-medium text-green-600">-${invoice.creditNote.creditAmount.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-base font-semibold pt-2 border-t border-green-200">
-                    <span>Monto neto pagado</span>
-                    <span>${invoice.creditNote.netAmount.toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Desglose de conceptos */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2">
-              {renderSubscriptionBreakdown()}
-              {renderAdditionalCharges()}
+        {/* Search and Filters */}
+        <div className="space-y-4">
+          {/* Main filters row */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Period filter */}
+            <CustomDropdown
+              label="Período"
+              value={selectedPeriod}
+              options={periodOptions}
+              onChange={setSelectedPeriod}
+              icon={<Calendar size={14} />}
+            />
+            
+            {/* Search */}
+            <div className="relative flex-1 min-w-[200px]">
+              <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder="Buscar por folio, RFC o monto..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 w-full"
+              />
             </div>
             
-            <div className="lg:col-span-1">
-              {renderFiscalInfo()}
+            {/* Status filter */}
+            <CustomDropdown
+              label="Estado"
+              value={selectedStatus}
+              options={statusOptions}
+              onChange={setSelectedStatus}
+            />
+            
+            {/* Document type filter */}
+            <CustomDropdown
+              label="Tipo"
+              value={selectedDocType}
+              options={documentTypeOptions}
+              onChange={setSelectedDocType}
+            />
+            
+            {/* Download button */}
+            <DownloadMenu 
+              selectedCount={selectedItems.size} 
+              hasFilters={selectedPeriod !== 'current_period' || selectedStatus !== 'all' || selectedDocType !== 'all' || searchQuery}
+            />
+          </div>
+          
+          {/* Active filters summary */}
+          {(selectedPeriod !== 'current_period' || selectedStatus !== 'all' || selectedDocType !== 'all' || searchQuery) && (
+            <div className="flex items-center justify-between bg-gray-50 px-4 py-2 rounded-lg">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="font-medium">Mostrando:</span>
+                <span className="text-gray-600">
+                  {periodOptions.find(opt => opt.value === selectedPeriod)?.label} 
+                  {selectedStatus !== 'all' && ` · ${statusOptions.find(opt => opt.value === selectedStatus)?.label}`}
+                  {selectedDocType !== 'all' && ` · ${documentTypeOptions.find(opt => opt.value === selectedDocType)?.label}`}
+                  {searchQuery && ` · "${searchQuery}"`}
+                </span>
+                <span className="text-gray-500">
+                  ({totalFilteredItems} {totalFilteredItems === 1 ? 'factura' : 'facturas'}) · 
+                  ${filteredInvoices.reduce((sum, inv) => sum + inv.amount, 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })} total · 
+                  ${(filteredInvoices.reduce((sum, inv) => sum + inv.amount, 0) * 0.16).toLocaleString('es-MX', { minimumFractionDigits: 2 })} IVA
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSelectedPeriod('current_period');
+                  setSelectedStatus('all');
+                  setSelectedDocType('all');
+                  setSearchQuery('');
+                }}
+                className="text-sm"
+              >
+                <X size={14} className="mr-1" />
+                Limpiar filtros
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-100">
+              <th className="text-left py-3 px-6 w-10">
+                <Checkbox 
+                  checked={selectAll}
+                  onCheckedChange={handleSelectAll}
+                />
+              </th>
+              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Fecha de emisión
+              </th>
+              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Número de factura
+              </th>
+              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Servicio
+              </th>
+              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Concepto de facturación
+              </th>
+              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Estado del pago
+              </th>
+              <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Total facturado
+              </th>
+              <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                PDF
+              </th>
+              <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                XML
+              </th>
+              <th className="text-left py-3 px-4 w-10"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredInvoices.map((invoice, index) => {
+              const statusInfo = statusConfig[invoice.status];
+              const isSelected = selectedItems.has(invoice.id);
+              const isPdfSelected = pdfSelections.has(invoice.id);
+              const isXmlSelected = xmlSelections.has(invoice.id);
+              const isClickable = index < 4; // Solo las primeras 4 son clickeables
+              
+              return (
+                <tr 
+                  key={invoice.id} 
+                  className={`border-b border-gray-50 hover:bg-gray-25 ${isClickable ? 'cursor-pointer' : ''}`}
+                  onClick={() => isClickable && onInvoiceClick && onInvoiceClick(invoice.invoiceNumber)}
+                >
+                  <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox 
+                      checked={isSelected}
+                      onCheckedChange={(checked) => handleSelectItem(invoice.id, checked)}
+                    />
+                  </td>
+                  <td className="py-4 px-4 text-sm">{invoice.date}</td>
+                  <td className="py-4 px-4 text-sm font-medium">
+                    <span className={isClickable ? 'text-blue-600 hover:text-blue-700 hover:underline' : ''}>
+                      {invoice.invoiceNumber}
+                    </span>
+                  </td>
+                  <td className="py-4 px-4 text-sm">{invoice.service}</td>
+                  <td className="py-4 px-4 text-sm max-w-xs">
+                    <div className="truncate">{invoice.concept}</div>
+                  </td>
+                  <td className="py-4 px-4">
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${statusInfo.bgColor} ${statusInfo.textColor}`}>
+                      {statusInfo.label}
+                    </span>
+                  </td>
+                  <td className="py-4 px-4 text-sm font-medium">$ {invoice.amount.toLocaleString()}</td>
+                  <td className="py-4 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox 
+                      checked={isPdfSelected}
+                      onCheckedChange={(checked) => handlePdfSelection(invoice.id, checked)}
+                    />
+                  </td>
+                  <td className="py-4 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox 
+                      checked={isXmlSelected}
+                      onCheckedChange={(checked) => handleXmlSelection(invoice.id, checked)}
+                    />
+                  </td>
+                  <td className="py-4 px-4" onClick={(e) => e.stopPropagation()}>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <MoreHorizontal size={16} />
+                    </Button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination */}
+      <div className="p-6 border-t border-gray-100">
+        <div className="flex justify-between items-center">
+          <div className="text-sm text-gray-600">
+            En total {totalItems.toLocaleString()} registro(s)
+          </div>
+          
+          <div className="flex items-center gap-4">
+            {/* Page Numbers */}
+            <div className="flex items-center gap-1">
+              <Button
+                variant={currentPage === 1 ? "default" : "ghost"}
+                size="sm"
+                className={currentPage === 1 ? "bg-red-500 hover:bg-red-600 text-white" : ""}
+                onClick={() => setCurrentPage(1)}
+              >
+                1
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setCurrentPage(2)}
+              >
+                2
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setCurrentPage(3)}
+              >
+                3
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setCurrentPage(4)}
+              >
+                4
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setCurrentPage(5)}
+              >
+                5
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setCurrentPage(6)}
+              >
+                6
+              </Button>
+              <span className="text-gray-400">...</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setCurrentPage(totalPages)}
+              >
+                {totalPages}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))}
+              >
+                <ChevronRight size={16} />
+              </Button>
+            </div>
+
+            {/* Items per page */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">10 registros / página</span>
+              <Button variant="outline" size="sm" className="text-xs">
+                <ChevronDown size={14} />
+              </Button>
+            </div>
+
+            {/* Jump to page */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Saltar a página</span>
+              <Input 
+                type="number" 
+                min="1" 
+                max={totalPages}
+                value={currentPage}
+                onChange={(e) => setCurrentPage(Math.min(Math.max(1, parseInt(e.target.value) || 1), totalPages))}
+                className="w-16 h-8 text-center text-sm"
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))}
+              >
+                <ChevronRight size={16} />
+              </Button>
             </div>
           </div>
         </div>

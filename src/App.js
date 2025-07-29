@@ -11,10 +11,13 @@ import { PaymentStatus } from './components/PaymentStatus';
 import { CommissionDetail } from './components/CommissionDetail';
 import ChangePaymentMethodModal from './components/ChangePaymentMethodModal';
 import { invoiceDetailsData } from './data/invoiceDetailsData';
+import { PlansHub, ProductPlansView } from './components/plans';
 
 export default function App() {
   const [showAdditionalChargesDetail, setShowAdditionalChargesDetail] = useState(false);
   const [showPlanDetails, setShowPlanDetails] = useState(false);
+  const [showPlansHub, setShowPlansHub] = useState(false); // Nueva vista de planes
+  const [selectedProduct, setSelectedProduct] = useState(null); // Para vistas de productos
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [hasInvoiceData, setHasInvoiceData] = useState(false); // Toggle para desarrollo
   const [paymentFailure, setPaymentFailure] = useState(null); // null o {type, daysRemaining, amount}
@@ -49,6 +52,24 @@ export default function App() {
     setShowPlanDetails(false);
   };
 
+  const handlePlansHubClick = () => {
+    setShowPlansHub(true);
+  };
+
+  const handleBackFromPlansHub = () => {
+    setShowPlansHub(false);
+  };
+
+  const handleProductSelect = (productId) => {
+    console.log('handleProductSelect called with:', productId);
+    setSelectedProduct(productId);
+  };
+
+  const handleBackFromProduct = () => {
+    console.log('handleBackFromProduct called');
+    setSelectedProduct(null);
+  };
+
   const handleChangePaymentMethod = () => {
     setShowChangePaymentModal(true);
   };
@@ -76,7 +97,7 @@ export default function App() {
   if (showAdditionalChargesDetail) {
     return (
       <>
-        <Sidebar />
+        <Sidebar onPlansClick={handlePlansHubClick} />
         <AdditionalChargesDetail onBack={handleBackFromDetail} />
       </>
     );
@@ -86,7 +107,7 @@ export default function App() {
   if (selectedCommission) {
     return (
       <>
-        <Sidebar />
+        <Sidebar onPlansClick={handlePlansHubClick} />
         <CommissionDetail 
           channel={selectedCommission.channel}
           totalCommission={0} // Estos valores se podrían pasar desde la factura
@@ -100,7 +121,7 @@ export default function App() {
   if (selectedInvoice) {
     return (
       <>
-        <Sidebar />
+        <Sidebar onPlansClick={handlePlansHubClick} />
         <InvoiceDetail invoice={selectedInvoice} onBack={handleBackFromInvoice} />
       </>
     );
@@ -109,15 +130,38 @@ export default function App() {
   if (showPlanDetails) {
     return (
       <>
-        <Sidebar />
+        <Sidebar onPlansClick={handlePlansHubClick} />
         <PlanDetails onBack={handleBackFromPlanDetails} />
+      </>
+    );
+  }
+
+  if (showPlansHub) {
+    console.log('showPlansHub is true, selectedProduct:', selectedProduct);
+    if (selectedProduct) {
+      console.log('Rendering ProductPlansView with productId:', selectedProduct);
+      return (
+        <>
+          <Sidebar onPlansClick={handlePlansHubClick} activeSection="planes" />
+          <ProductPlansView 
+            productId={selectedProduct} 
+            onBack={handleBackFromProduct}
+          />
+        </>
+      );
+    }
+    console.log('Rendering PlansHub');
+    return (
+      <>
+        <Sidebar onPlansClick={handlePlansHubClick} activeSection="planes" />
+        <PlansHub onProductSelect={handleProductSelect} />
       </>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Sidebar />
+      <Sidebar onPlansClick={handlePlansHubClick} activeSection="facturacion" />
       
       <div className="ml-60 p-8">
         {/* Page Header */}

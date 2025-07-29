@@ -1,7 +1,7 @@
 import React from 'react';
 import { User, Building2, Lock, BarChart3, Home, CreditCard, Wallet, Target } from 'lucide-react';
 
-export function Sidebar() {
+export function Sidebar({ onPlansClick, activeSection = 'facturacion' }) {
   const navSections = [
     {
       title: "MI PERFIL",
@@ -16,9 +16,9 @@ export function Sidebar() {
       items: [
         { icon: <BarChart3 size={16} />, label: "Datos de tienda", href: "#" },
         { icon: <Home size={16} />, label: "Sucursales", href: "#" },
-        { icon: <CreditCard size={16} />, label: "Facturación", href: "#", active: true },
-        { icon: <Wallet size={16} />, label: "Saldos y movimientos", href: "#" },
-        { icon: <Target size={16} />, label: "Planes", href: "#" },
+        { icon: <CreditCard size={16} />, label: "Facturación", href: "#", active: activeSection === 'facturacion', onClick: null },
+        { icon: <Wallet size={16} />, label: "Saldos y movimientos", href: "#", active: false },
+        { icon: <Target size={16} />, label: "Planes", href: "#", active: activeSection === 'planes', onClick: onPlansClick },
       ]
     }
   ];
@@ -43,7 +43,13 @@ export function Sidebar() {
             <a
               key={item.label}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all mb-1 ${
+              onClick={(e) => {
+                if (item.onClick) {
+                  e.preventDefault();
+                  item.onClick();
+                }
+              }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all mb-1 cursor-pointer ${
                 item.active
                   ? 'bg-red-500 text-white'
                   : 'text-gray-900 hover:bg-gray-100'
